@@ -90,8 +90,8 @@ const QColor cPopoutTextColor_back(0xe2, 0xe2, 0xe2);
 PhoneKeyboardFactory::PhoneKeyboardFactory() :
     m_virtualKeyboard(0),
     m_preferredDpiMinimum(250),
-    m_preferredMaximumWidth(1024),
-    m_preferredMaximumHeight(1024)
+    m_preferredMaximumWidth(720),
+    m_preferredMaximumHeight(720)
 {
     // TODO: Are these defined somewhere?
     m_supportedLocales.append("en");

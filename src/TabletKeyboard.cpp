@@ -85,8 +85,8 @@ const QColor cBlueColor_back(255, 255, 255);
 TabletKeyboardFactory::TabletKeyboardFactory() :
     m_virtualKeyboard(0),
     m_preferredDpiMaximum(250),
-    m_preferredMinimumWidth(1024),
-    m_preferredMinimumHeight(1024)
+    m_preferredMinimumWidth(720),
+    m_preferredMinimumHeight(720)
 {
     // TODO: Are these defined somewhere?
     m_supportedLocales.append("en");
@@ -227,8 +227,8 @@ TabletKeyboard::TabletKeyboard(IMEDataInterface * dataInterface) : VirtualKeyboa
         m_keymap.setRowHeight(r, m_white_key.height() / 2);
 
     m_presetHeight[cKey_Resize_Tiny - cKey_Resize_First] = 243;
-    m_presetHeight[cKey_Resize_Small - cKey_Resize_First] = (340 + 243) / 2;
-    m_presetHeight[cKey_Resize_Default - cKey_Resize_First] = m_background.height();
+    m_presetHeight[cKey_Resize_Small - cKey_Resize_First] = 292;
+    m_presetHeight[cKey_Resize_Default - cKey_Resize_First] = 340;
     m_presetHeight[cKey_Resize_Large - cKey_Resize_First] = 393;
 
     connect(&m_IMEDataInterface->m_availableSpace, SIGNAL(valueChanged(const QRect &)), SLOT(availableSpaceChanged(const QRect &)));

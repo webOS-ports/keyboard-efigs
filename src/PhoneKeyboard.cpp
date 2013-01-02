@@ -59,13 +59,6 @@ const uint64_t cWordDeleteDelay = cFirstRepeatDelay + 1500;
 const QPainter::RenderHints cRenderHints = QPainter::SmoothPixmapTransform | QPainter::HighQualityAntialiasing | QPainter::TextAntialiasing;
 
 // constants used to draw the popup for extended keys
-const int cPopupFontSize = 22;
-const int cPopupLeftSide = 11;
-const int cPopupRightSide = 10;
-const int cPopupSide = 20;
-const int cPopupPointerStart = 37;
-const int cPopupPointerWidth = 25;
-const int cPopupTopToKey = 10;
 const int cPopupSingleLineMax = 5; // if more extended chars that this, break-up in two lines
 const int cPressedTranslateH = 0;
 const int cPressedTranslateV = 0;
@@ -74,7 +67,7 @@ static QFont sFont("Prelude");
 static QFont sPopoutFont("Prelude", 32);
 
 static QString sElipsis(QChar(0x2026 /* … */));
-const int cElipsisFontSize = 14;
+const int m_elipsisFontSize = 14;// * m_IMEDataInterface->m_layoutScale.get();
 
 const QColor cActiveColor(0xd2, 0xd2, 0xd2);
 const QColor cActiveColor_back(0xd2, 0xd2, 0xd2);
@@ -180,6 +173,14 @@ PhoneKeyboard::PhoneKeyboard(IMEDataInterface * dataInterface) : VirtualKeyboard
     m_timer(this), m_repeatKey(cOutside), m_repeatStartTime(0),
     m_extendedKeys(NULL),
     m_extendedKeyShown(cKey_None),
+    m_popupFontSize(22),
+    m_popupLeftSide(11),
+    m_popupRightSide(10),
+    m_popupSide(20),
+    m_popupPointerStart(37),
+    m_popupPointerWidth(25),
+    m_popupTopToKey(10),
+    m_elipsisFontSize(14),
     m_shortcutsHandler(dataInterface),
     m_showPopupKeys(true),
     m_idleInit(false),
@@ -227,6 +228,17 @@ PhoneKeyboard::PhoneKeyboard(IMEDataInterface * dataInterface) : VirtualKeyboard
     
     m_presetHeight[0] = longAxis * 0.475; // portrait
     m_presetHeight[1] = shortAxis * 0.5; // landscape
+    
+    m_9tileCorner = NineTileCorner(22 * dataInterface->m_layoutScale.get(), 22 * dataInterface->m_layoutScale.get());
+    
+    m_popupFontSize *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupLeftSide *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupRightSide *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupSide *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupPointerStart *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupPointerWidth *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupTopToKey *= m_IMEDataInterface->m_layoutScale.get();
+    m_elipsisFontSize *= m_IMEDataInterface->m_layoutScale.get();
 
     connect(&m_IMEDataInterface->m_availableSpace, SIGNAL(valueChanged(const QRect &)), SLOT(availableSpaceChanged(const QRect &)));
     connect(&m_IMEDataInterface->m_visible, SIGNAL(valueChanged(const bool &)), SLOT(visibleChanged(const bool &)));
@@ -234,7 +246,7 @@ PhoneKeyboard::PhoneKeyboard(IMEDataInterface * dataInterface) : VirtualKeyboard
     connect(&m_IMEDataInterface->m_autoCap, SIGNAL(valueChanged(const bool &)), SLOT(autoCapChanged(const bool &)));
     connect(&m_timer, SIGNAL(timeout()), this, SLOT(repeatChar()));
 
-    m_candidateBar.font().setPixelSize(24);
+    m_candidateBar.font().setPixelSize(24 * m_IMEDataInterface->m_layoutScale.get());
 
     connect(&m_candidateBar, SIGNAL(needsRedraw()), SLOT(triggerRepaint()));
     connect(&m_candidateBar, SIGNAL(resized()), SLOT(candidateBarResized()));
@@ -1051,8 +1063,8 @@ bool PhoneKeyboard::setExtendedKeys(QPoint keyCoord, bool cancelIfSame)
         m_keymap.keyboardToKeyZone(keyCoord, m_extendedKeysFrame);
         m_extendedKeysPointer = m_extendedKeysFrame.left() + m_extendedKeysFrame.width() / 2;
         m_extendedKeysFrame.translate(0, -popup.height() + 10);
-        int width = cPopupLeftSide + cPopupRightSide + lineLength * m_popup_key.width();
-        m_extendedKeysFrame.setLeft(m_extendedKeysPointer - m_popup_key.width() / 2 - cPopupLeftSide);
+        int width = m_popupLeftSide + m_popupRightSide + lineLength * m_popup_key.width();
+        m_extendedKeysFrame.setLeft(m_extendedKeysPointer - m_popup_key.width() / 2 - m_popupLeftSide);
         m_extendedKeysFrame.setWidth(width);
         m_extendedKeysFrame.setHeight(popup.height());
         if (m_extendedKeysFrame.left() < 0)
@@ -1076,7 +1088,7 @@ bool PhoneKeyboard::pointToExtendedPopup(QPointF position, UKey & outKey)
     outKey = cKey_None;
     if (m_extendedKeys && m_extendedKeysFrame.contains(position.x(), position.y() + m_keymap.rect().top()))
     {
-        QPoint where = position.toPoint() - m_extendedKeysFrame.topLeft() - QPoint(cPopupLeftSide, -m_keymap.rect().top() + cPopupTopToKey);
+        QPoint where = position.toPoint() - m_extendedKeysFrame.topLeft() - QPoint(m_popupLeftSide, -m_keymap.rect().top() + m_popupTopToKey);
         int cellCount, lineCount, lineLength;
         getExtendedPopupSpec(cellCount, lineCount, lineLength);
         int x = qMin<int>(where.x() / m_popup_key.width(), lineLength - 1);
@@ -1173,8 +1185,9 @@ void PhoneKeyboard::paint(QPainter & painter)
             {
                 if (m_keymap.getExtendedChars(QPoint(x, y)) && m_keymap.keyboardToKeyZone(QPoint(x, y), r) > 0)
                 {
-                    r.setWidth(r.width() - 9 + m_9tileCorner.m_trimH); r.setHeight(r.height() - 9 + m_9tileCorner.m_trimV);
-                    renderer.render(r, GlyphSpec(sElipsis, cElipsisFontSize, false, cActiveColor, cActiveColor_back), sFont, Qt::AlignRight | Qt::AlignBottom);
+                    int offset = 9 * m_IMEDataInterface->m_layoutScale.get();
+                    r.setWidth(r.width() - offset + m_9tileCorner.m_trimH); r.setHeight(r.height() - offset + m_9tileCorner.m_trimV);
+                    renderer.render(r, GlyphSpec(sElipsis, m_elipsisFontSize, false, cActiveColor, cActiveColor_back), sFont, Qt::AlignRight | Qt::AlignBottom);
                 }
             }
         }
@@ -1202,14 +1215,15 @@ void PhoneKeyboard::paint(QPainter & painter)
                         drawKeyCap(&painter, renderer, r, touch.m_keyCoordinate, key, eUse_pressed);
                         if (extendedKeysShown && m_keymap.getExtendedChars(touch.m_keyCoordinate))
                         {
-                            QRect elipsisRect(r.left() + cPressedTranslateH, r.top() + cPressedTranslateV, r.width() - 9 + m_9tileCorner.m_trimH, r.height() - 9 + m_9tileCorner.m_trimV);
-                            renderer.render(elipsisRect, GlyphSpec(sElipsis, cElipsisFontSize, false, cActiveColor, cActiveColor_back), sFont, Qt::AlignRight | Qt::AlignBottom);
+                    	    int offset = 9 * m_IMEDataInterface->m_layoutScale.get();
+                            QRect elipsisRect(r.left() + cPressedTranslateH, r.top() + cPressedTranslateV, r.width() - offset + m_9tileCorner.m_trimH, r.height() - offset + m_9tileCorner.m_trimV);
+                            renderer.render(elipsisRect, GlyphSpec(sElipsis, m_elipsisFontSize, false, cActiveColor, cActiveColor_back), sFont, Qt::AlignRight | Qt::AlignBottom);
                         }
                         if (!m_extendedKeys && m_showPopupKeys && key != Qt::Key_Shift && key != cKey_Symbol && key != Qt::Key_Space && key != Qt::Key_Return && key != Qt::Key_Backspace)
                         {
                             QPoint topLeft((r.left() + r.right() - m_popup.width()) / 2, r.top() - m_popup.height());
                             painter.drawPixmap(topLeft, m_popup);
-                            QRect destRect(topLeft + QPoint((m_popup.width() - m_popup_key.width()) / 2, cPopupTopToKey), QSize(m_popup_key.width(), m_popup_key.height() / 2));
+                            QRect destRect(topLeft + QPoint((m_popup.width() - m_popup_key.width()) / 2, m_popupTopToKey), QSize(m_popup_key.width(), m_popup_key.height() / 2));
                             painter.drawPixmap(destRect.topLeft(), m_popup_key, QRect(0, m_popup_key.height() / 2, destRect.width(), destRect.height()));
                             drawKeyCap(&painter, renderer, destRect, touch.m_keyCoordinate, key, eUse_preview);
                         }
@@ -1229,19 +1243,19 @@ void PhoneKeyboard::paint(QPainter & painter)
         getExtendedPopupSpec(cellCount, lineCount, lineLength);
         IMEPixmap & popup = (lineCount > 1) ? m_popup_2 : m_popup;
         QRect r(m_extendedKeysFrame);
-        int left = r.left() + cPopupSide;
-        int right = r.right() - cPopupSide + 1;
-        painter.drawPixmap(r.left(), r.top(), popup.pixmap(), 0, 0, cPopupSide, popup.height());
-        painter.drawPixmap(right, r.top(), popup.pixmap(), popup.width() - cPopupSide, 0, cPopupSide, popup.height());
+        int left = r.left() + m_popupSide;
+        int right = r.right() - m_popupSide + 1;
+        painter.drawPixmap(r.left(), r.top(), popup.pixmap(), 0, 0, m_popupSide, popup.height());
+        painter.drawPixmap(right, r.top(), popup.pixmap(), popup.width() - m_popupSide, 0, m_popupSide, popup.height());
 
-        int pointerLeft = m_extendedKeysPointer - cPopupPointerWidth / 2;
-        int pointerRight = pointerLeft + cPopupPointerWidth;
+        int pointerLeft = m_extendedKeysPointer - m_popupPointerWidth / 2;
+        int pointerRight = pointerLeft + m_popupPointerWidth;
         if (left < pointerLeft)
-            painter.drawPixmap(left, r.top(), pointerLeft - left, popup.height(), popup.pixmap(), cPopupSide, 0, 1, popup.height());
+            painter.drawPixmap(left, r.top(), pointerLeft - left, popup.height(), popup.pixmap(), m_popupSide, 0, 1, popup.height());
         if (pointerRight < right)
-            painter.drawPixmap(pointerRight, r.top(), right - pointerRight, popup.height(), popup.pixmap(), cPopupSide, 0, 1, popup.height());
-        painter.drawPixmap(pointerLeft, r.top(), popup.pixmap(), cPopupPointerStart, 0, cPopupPointerWidth, popup.height());
-        r.translate(cPopupLeftSide, cPopupTopToKey);
+            painter.drawPixmap(pointerRight, r.top(), right - pointerRight, popup.height(), popup.pixmap(), m_popupSide, 0, 1, popup.height());
+        painter.drawPixmap(pointerLeft, r.top(), popup.pixmap(), m_popupPointerStart, 0, m_popupPointerWidth, popup.height());
+        r.translate(m_popupLeftSide, m_popupTopToKey);
         UKey key;
         for (int k = 0; (key = m_extendedKeys[k]) != cKey_None; ++k)
         {
@@ -1269,7 +1283,7 @@ void PhoneKeyboard::paint(QPainter & painter)
             else
             {
                 QString text = m_keymap.getKeyDisplayString(key);
-                int fontSize = (text.length() < 6) ? cPopupFontSize : cPopupFontSize - 8;
+                int fontSize = (text.length() < 6) ? m_popupFontSize : m_popupFontSize - 8;
                 if (sFont.pixelSize() != fontSize)
                 {
                     sFont.setPixelSize(fontSize);
@@ -1514,18 +1528,18 @@ void PhoneKeyboard::drawKeyCap(QPainter * painter, GlyphRenderer<GlyphSpec> & re
     {
         sFont.setBold(useExtraLarge(use));
         bool forceAlignHCenter = false;  // if too tight, center text for better looking results
+        int fontSize = (useExtraLarge(use) ? 32 : 24) * m_IMEDataInterface->m_layoutScale.get();
         int height = location.height();
-        int fontSize = useExtraLarge(use) ? 32 : 24;
         int centerOffset = 1;
         if (useTwo && use == eUse_preview)
             twoHorizontal = true, centerOffset = 2;
         if (height / 2 < fontSize)
-            fontSize = (height + 1) / 2 + (useExtraLarge(use) ? 4 : 0);
+            fontSize = (height + 1) / 2 + (useExtraLarge(use) ? 4 * m_IMEDataInterface->m_layoutScale.get() : 0);
         if (text.size() > 1)
         {
             if (!useExtraLarge(use))
                 sFont.setBold(UKeyIsFunctionKey(key) && !UKeyIsTextShortcutKey(key));
-            fontSize = qMin<int>(fontSize, 22);
+            fontSize = qMin<int>(fontSize, 22 * m_IMEDataInterface->m_layoutScale.get());
             sFont.setPixelSize(fontSize);
             int gap;
             while ((gap = QFontMetrics(sFont).width(text) + 16 - location.width()) > 0) {
@@ -1745,8 +1759,8 @@ bool PhoneKeyboard::idle()
                 //g_debug("pre-render %dx%d %s...", x, y, QString(QChar(extendedChars[extendedIndex])).toUtf8().data());
                 if (UKeyIsUnicodeQtKey(extendedChars[extendedIndex]))
                 {
-                    populator.render(QRect(QPoint(), m_popup_key.size()), GlyphSpec(QString(QChar(extendedChars[extendedIndex]).toLower()), cPopupFontSize, false, cPopoutTextColor, cPopoutTextColor_back), sFont);
-                    populator.render(QRect(QPoint(), m_popup_key.size()), GlyphSpec(QString(QChar(extendedChars[extendedIndex]).toUpper()), cPopupFontSize, false, cPopoutTextColor, cPopoutTextColor_back), sFont);
+                    populator.render(QRect(QPoint(), m_popup_key.size()), GlyphSpec(QString(QChar(extendedChars[extendedIndex]).toLower()), m_popupFontSize, false, cPopoutTextColor, cPopoutTextColor_back), sFont);
+                    populator.render(QRect(QPoint(), m_popup_key.size()), GlyphSpec(QString(QChar(extendedChars[extendedIndex]).toUpper()), m_popupFontSize, false, cPopoutTextColor, cPopoutTextColor_back), sFont);
                 }
                 if (!extendedChars[++extendedIndex])
                     extendedChars = NULL;
@@ -1768,7 +1782,7 @@ bool PhoneKeyboard::idle()
         sInitExtendedGlyphs = false;
 
         // cache elipsis...
-        populator.render(QRect(0, 0, 20, 20), GlyphSpec(sElipsis, cElipsisFontSize, false, cActiveColor, cActiveColor_back), sFont);
+        populator.render(QRect(0, 0, 20, 20), GlyphSpec(sElipsis, m_elipsisFontSize, false, cActiveColor, cActiveColor_back), sFont);
     }
 
     m_keymap.incCachedGlyphs();

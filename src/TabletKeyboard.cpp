@@ -58,12 +58,12 @@ const uint64_t cWordDeleteDelay = cFirstRepeatDelay + 1500;
 
 const QPainter::RenderHints cRenderHints = QPainter::SmoothPixmapTransform | QPainter::HighQualityAntialiasing | QPainter::TextAntialiasing;
 
+// constant used to draw the popup for extended keys
+const int cPopupSingleLineMax = 5;
+
 static QFont sFont("Prelude");
 
 static QString sElipsis(QChar(0x2026 /* … */));
-const int cElipsisFontSize = 14;// * m_IMEDataInterface->m_layoutScale.get();
-
-const int cPopupSingleLineMax = 5;
 
 const QColor cActiveColor(20, 20, 20);
 const QColor cActiveColor_back(0xe2, 0xe2, 0xe2);
@@ -167,13 +167,14 @@ TabletKeyboard::TabletKeyboard(IMEDataInterface * dataInterface) : VirtualKeyboa
     m_timer(this), m_repeatKey(cOutside), m_repeatStartTime(0),
     m_extendedKeys(NULL),
     m_extendedKeyShown(cKey_None),
-    m_PopupFontSize(22),
-    m_PopupLeftSide(11),
-    m_PopupRightSide(10),
-    m_PopupSide(20),
-    m_PopupPointerStart(37),
-    m_PopupPointerWidth(25),
-    m_PopupTopToKey(10),
+    m_popupFontSize(22),
+    m_popupLeftSide(11),
+    m_popupRightSide(10),
+    m_popupSide(20),
+    m_popupPointerStart(37),
+    m_popupPointerWidth(25),
+    m_popupTopToKey(10),
+    m_elipsisFontSize(14),
     m_shortcutsHandler(dataInterface),
     m_diamondOptimization(true),
     m_idleInit(false),
@@ -242,13 +243,14 @@ TabletKeyboard::TabletKeyboard(IMEDataInterface * dataInterface) : VirtualKeyboa
     
     m_9tileCorner = NineTileCorner(13 * dataInterface->m_layoutScale.get(), 13 * dataInterface->m_layoutScale.get());
     
-    m_PopupFontSize *= m_IMEDataInterface->m_layoutScale.get();
-    m_PopupLeftSide *= m_IMEDataInterface->m_layoutScale.get();
-    m_PopupRightSide *= m_IMEDataInterface->m_layoutScale.get();
-    m_PopupSide *= m_IMEDataInterface->m_layoutScale.get();
-    m_PopupPointerStart *= m_IMEDataInterface->m_layoutScale.get();
-    m_PopupPointerWidth *= m_IMEDataInterface->m_layoutScale.get();
-    m_PopupTopToKey *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupFontSize *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupLeftSide *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupRightSide *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupSide *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupPointerStart *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupPointerWidth *= m_IMEDataInterface->m_layoutScale.get();
+    m_popupTopToKey *= m_IMEDataInterface->m_layoutScale.get();
+    m_elipsisFontSize *= m_IMEDataInterface->m_layoutScale.get();
 
     connect(&m_IMEDataInterface->m_availableSpace, SIGNAL(valueChanged(const QRect &)), SLOT(availableSpaceChanged(const QRect &)));
     connect(&m_IMEDataInterface->m_visible, SIGNAL(valueChanged(const bool &)), SLOT(visibleChanged(const bool &)));
@@ -1158,8 +1160,8 @@ bool TabletKeyboard::setExtendedKeys(QPoint keyCoord, bool cancelIfSame)
         m_keymap.keyboardToKeyZone(keyCoord, m_extendedKeysFrame);
         m_extendedKeysPointer = m_extendedKeysFrame.left() + m_extendedKeysFrame.width() / 2;
         m_extendedKeysFrame.translate(0, -popup.height() + 10);
-        int width = m_PopupLeftSide + m_PopupRightSide + lineLength * m_popup_key.width();
-        m_extendedKeysFrame.setLeft(m_extendedKeysPointer - m_popup_key.width() / 2 - m_PopupLeftSide);
+        int width = m_popupLeftSide + m_popupRightSide + lineLength * m_popup_key.width();
+        m_extendedKeysFrame.setLeft(m_extendedKeysPointer - m_popup_key.width() / 2 - m_popupLeftSide);
         m_extendedKeysFrame.setWidth(width);
         m_extendedKeysFrame.setHeight(popup.height());
         if (m_extendedKeysFrame.left() < 0)
@@ -1183,7 +1185,7 @@ bool TabletKeyboard::pointToExtendedPopup(QPointF position, UKey & outKey)
     outKey = cKey_None;
     if (m_extendedKeys && m_extendedKeysFrame.contains(position.x(), position.y() + m_keymap.rect().top()))
     {
-        QPoint where = position.toPoint() - m_extendedKeysFrame.topLeft() - QPoint(m_PopupLeftSide, -m_keymap.rect().top() + m_PopupTopToKey);
+        QPoint where = position.toPoint() - m_extendedKeysFrame.topLeft() - QPoint(m_popupLeftSide, -m_keymap.rect().top() + m_popupTopToKey);
         int cellCount, lineCount, lineLength;
         getExtendedPopupSpec(cellCount, lineCount, lineLength);
         int x = qMin<int>(where.x() / m_popup_key.width(), lineLength - 1);
@@ -1312,7 +1314,7 @@ void TabletKeyboard::paint(QPainter & painter)
                 {
                     int offset = 9 * m_IMEDataInterface->m_layoutScale.get();
                     r.setWidth(r.width() - offset + m_9tileCorner.m_trimH); r.setHeight(r.height() - offset + m_9tileCorner.m_trimV);
-                    renderer.render(r, GlyphSpec(sElipsis, cElipsisFontSize, false, cActiveColor, cActiveColor_back), sFont, Qt::AlignRight | Qt::AlignBottom);
+                    renderer.render(r, GlyphSpec(sElipsis, m_elipsisFontSize, false, cActiveColor, cActiveColor_back), sFont, Qt::AlignRight | Qt::AlignBottom);
                 }
             }
         }
@@ -1321,19 +1323,19 @@ void TabletKeyboard::paint(QPainter & painter)
         getExtendedPopupSpec(cellCount, lineCount, lineLength);
         IMEPixmap & popup = (lineCount > 1) ? m_popup_2 : m_popup;
         QRect r(m_extendedKeysFrame);
-        int left = r.left() + m_PopupSide;
-        int right = r.right() - m_PopupSide + 1;
-        painter.drawPixmap(r.left(), r.top(), popup.pixmap(), 0, 0, m_PopupSide, popup.height());
-        painter.drawPixmap(right, r.top(), popup.pixmap(), popup.width() - m_PopupSide, 0, m_PopupSide, popup.height());
+        int left = r.left() + m_popupSide;
+        int right = r.right() - m_popupSide + 1;
+        painter.drawPixmap(r.left(), r.top(), popup.pixmap(), 0, 0, m_popupSide, popup.height());
+        painter.drawPixmap(right, r.top(), popup.pixmap(), popup.width() - m_popupSide, 0, m_popupSide, popup.height());
 
-        int pointerLeft = m_extendedKeysPointer - m_PopupPointerWidth / 2;
-        int pointerRight = pointerLeft + m_PopupPointerWidth;
+        int pointerLeft = m_extendedKeysPointer - m_popupPointerWidth / 2;
+        int pointerRight = pointerLeft + m_popupPointerWidth;
         if (left < pointerLeft)
-            painter.drawPixmap(left, r.top(), pointerLeft - left, popup.height(), popup.pixmap(), m_PopupSide, 0, 1, popup.height());
+            painter.drawPixmap(left, r.top(), pointerLeft - left, popup.height(), popup.pixmap(), m_popupSide, 0, 1, popup.height());
         if (pointerRight < right)
-            painter.drawPixmap(pointerRight, r.top(), right - pointerRight, popup.height(), popup.pixmap(), m_PopupSide, 0, 1, popup.height());
-        painter.drawPixmap(pointerLeft, r.top(), popup.pixmap(), m_PopupPointerStart, 0, m_PopupPointerWidth, popup.height());
-        r.translate(m_PopupLeftSide, m_PopupTopToKey);
+            painter.drawPixmap(pointerRight, r.top(), right - pointerRight, popup.height(), popup.pixmap(), m_popupSide, 0, 1, popup.height());
+        painter.drawPixmap(pointerLeft, r.top(), popup.pixmap(), m_popupPointerStart, 0, m_popupPointerWidth, popup.height());
+        r.translate(m_popupLeftSide, m_popupTopToKey);
         UKey key;
         for (int k = 0; (key = m_extendedKeys[k]) != cKey_None; ++k)
         {
@@ -1354,7 +1356,7 @@ void TabletKeyboard::paint(QPainter & painter)
             else
                 cell.moveTopLeft(QPoint(r.left() + (k - lineLength) * m_popup_key.width(), r.top() + m_popup_2.height() - m_popup.height()));
             QString text = m_keymap.getKeyDisplayString(key);
-            int fontSize = (text.length() < 6) ? m_PopupFontSize : m_PopupFontSize - 8;
+            int fontSize = (text.length() < 6) ? m_popupFontSize : m_popupFontSize - 8;
             if (sFont.pixelSize() != fontSize)
             {
                 sFont.setPixelSize(fontSize);
@@ -1815,14 +1817,14 @@ bool TabletKeyboard::idle()
                 if (UKeyIsUnicodeQtKey(key))
                 {
                     //g_debug("pre-render %dx%d %s...", x, y, QString(QChar(key)).toUtf8().data());
-                    populator.render(QRect(QPoint(), m_popup_key.size()), GlyphSpec(QString(QChar(key).toLower()), m_PopupFontSize, false, cActiveColor, cActiveColor_back), sFont);
-                    populator.render(QRect(QPoint(), m_popup_key.size()), GlyphSpec(QString(QChar(key).toUpper()), m_PopupFontSize, false, cActiveColor, cActiveColor_back), sFont);
+                    populator.render(QRect(QPoint(), m_popup_key.size()), GlyphSpec(QString(QChar(key).toLower()), m_popupFontSize, false, cActiveColor, cActiveColor_back), sFont);
+                    populator.render(QRect(QPoint(), m_popup_key.size()), GlyphSpec(QString(QChar(key).toUpper()), m_popupFontSize, false, cActiveColor, cActiveColor_back), sFont);
                 }
                 else
                 {
                     QString text = m_keymap.getKeyDisplayString(key);
                     if (text.size())
-                        populator.render(QRect(QPoint(), m_popup_key.size()), GlyphSpec(text, m_PopupFontSize, false, cActiveColor, cActiveColor_back), sFont);
+                        populator.render(QRect(QPoint(), m_popup_key.size()), GlyphSpec(text, m_popupFontSize, false, cActiveColor, cActiveColor_back), sFont);
                 }
                 if (!extendedChars[++extendedIndex])
                     extendedChars = NULL;
@@ -1843,7 +1845,7 @@ bool TabletKeyboard::idle()
         } while (true);
 
         // cache elipsis...
-        populator.render(QRect(0, 0, 20, 20), GlyphSpec(sElipsis, cElipsisFontSize, false, cActiveColor, cActiveColor_back), sFont);
+        populator.render(QRect(0, 0, 20, 20), GlyphSpec(sElipsis, m_elipsisFontSize, false, cActiveColor, cActiveColor_back), sFont);
 
         sInitExtendedGlyphs = false;
     }

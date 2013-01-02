@@ -239,13 +239,14 @@ private:
     int m_extendedKeysPointer; // where the extended keys popup pointer to the key should be (X coordinate)
     UKey m_extendedKeyShown;
     
-    int m_PopupFontSize;
-    int m_PopupLeftSide;
-    int m_PopupRightSide;
-    int m_PopupSide;
-    int m_PopupPointerStart;
-    int m_PopupPointerWidth;
-    int m_PopupTopToKey;
+    int m_popupFontSize;
+    int m_popupLeftSide;
+    int m_popupRightSide;
+    int m_popupSide;
+    int m_popupPointerStart;
+    int m_popupPointerWidth;
+    int m_popupTopToKey;
+    int m_elipsisFontSize;
 
     ShortcutsHandler m_shortcutsHandler;
 

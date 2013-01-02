@@ -131,12 +131,12 @@ void NineTileSprites::draw(QPainter & painter, const QRect & location, QPixmap &
 
 #if 0
 #define FRAGMENTS_INIT(n)
-#define FRAMENT(n, destination, source)  painter.drawPixmap(destination, pixmap, source)
-#define FRAMENTS_DRAW(n)
+#define FRAGMENT(n, destination, source)  painter.drawPixmap(destination, pixmap, source)
+#define FRAGMENTS_DRAW(n)
 #else
 #define FRAGMENTS_INIT(n)     QPainter::PixmapFragment fragments[n]
-#define FRAMENT(n, destination, source)  initPixmapFragment(fragments[n], destination, source)
-#define FRAMENTS_DRAW(n)     painter.drawPixmapFragments(fragments, n, pixmap)
+#define FRAGMENT(n, destination, source)  initPixmapFragment(fragments[n], destination, source)
+#define FRAGMENTS_DRAW(n)     painter.drawPixmapFragments(fragments, n, pixmap)
 #endif
 
 void NineTileSprites::nineTileDraw(QPainter & painter, const QRect & location, QPixmap & pixmap, bool pressed, const NineTileCorner & corner)
@@ -152,12 +152,11 @@ void NineTileSprites::nineTileDraw(QPainter & painter, const QRect & location, Q
     {
         if (shrinkX == 0) // no scaling at all!
         {
-            //painter.fillRect(location, QColor(0, 255, 0));
             painter.drawPixmap(QPointF(location.left(), location.top()), pixmap, QRectF(corner.m_trimH, sourceTopF, pixmap.width() - 2 * corner.m_trimH, source_half_heightF));
+            //painter.fillRect(location, QColor(0, 255, 0));
         }
         else
         { // Extending horizontally: 3-tile
-            //painter.fillRect(location, QColor(0, 0, 255));
 
             qreal nudgedCornerSizeX = corner.m_cornerSizeH - corner.m_trimH;
 
@@ -169,23 +168,33 @@ void NineTileSprites::nineTileDraw(QPainter & painter, const QRect & location, Q
             qreal loc_x75 = location.right() - nudgedCornerSizeX + 1;
 
             FRAGMENTS_INIT(3);
-            FRAMENT(0, QPointF(loc_left, loc_top), QRectF(corner.m_trimH, sourceTopF, nudgedCornerSizeX, source_half_heightF));
-            FRAMENT(1, QPointF(loc_x75, loc_top), QRectF(pixmap_x75, sourceTopF, nudgedCornerSizeX, source_half_heightF));
-            FRAMENT(2, QRectF(loc_x25, loc_top, loc_x75 - loc_x25, location.height()), QRectF(pixmap_x25, sourceTopF, pixmap_x75 - pixmap_x25, source_half_heightF));
-            FRAMENTS_DRAW(3);
+            FRAGMENT(0, QPointF(loc_left, loc_top), QRectF(corner.m_trimH, sourceTopF, nudgedCornerSizeX, source_half_heightF));
+            FRAGMENT(1, QPointF(loc_x75, loc_top), QRectF(pixmap_x75, sourceTopF, nudgedCornerSizeX, source_half_heightF));
+            FRAGMENT(2, QRectF(loc_x25, loc_top, loc_x75 - loc_x25, location.height()), QRectF(pixmap_x25, sourceTopF, pixmap_x75 - pixmap_x25, source_half_heightF));
+            FRAGMENTS_DRAW(3);
+            //painter.fillRect(location, QColor(0, 0, 255));
         }
     }
     else // Sizes don't match, use full 9-tile
     {
-        //painter.fillRect(location, QColor(255, 0, 0));
+    	qreal cornerH = corner.m_cornerSizeH;
+    	qreal cornerV = corner.m_cornerSizeV;
+    	
+    	/* NOTE: This should scale the pixmaps as well as resizing the corners.
+    	*  (Requires some rewriting, since we're using instances of a single pixmap atm)
+    	*/
+    	if(location.width() < corner.m_cornerSizeH * 2)
+    		cornerH  = location.width()/2;
+    	if(location.height() < corner.m_cornerSizeV * 2)
+    		cornerV  = location.height()/2;
 
-        qreal nudgedCornerSizeX = corner.m_cornerSizeH - corner.m_trimH;
-        qreal nudgedCornerSizeY = corner.m_cornerSizeV - corner.m_trimV;
+        qreal nudgedCornerSizeX = cornerH - corner.m_trimH;
+        qreal nudgedCornerSizeY = cornerV - corner.m_trimV;
 
-        qreal pixmap_x25 = corner.m_cornerSizeH;
-        qreal pixmap_x75 = pixmap.width() - corner.m_cornerSizeH;
-        qreal pixmap_y25 = sourceTop + corner.m_cornerSizeV;
-        qreal pixmap_y75 = sourceTop + source_half_height - corner.m_cornerSizeV;
+        qreal pixmap_x25 = cornerH;
+        qreal pixmap_x75 = pixmap.width() - cornerH;
+        qreal pixmap_y25 = sourceTop + cornerV;
+        qreal pixmap_y75 = sourceTop + source_half_height - cornerV;
         qreal pixmap_gx = pixmap_x75 - pixmap_x25;
         qreal pixmap_gy = pixmap_y75 - pixmap_y25;
 
@@ -200,19 +209,21 @@ void NineTileSprites::nineTileDraw(QPainter & painter, const QRect & location, Q
 
         FRAGMENTS_INIT(9);
 
-        FRAMENT(0, QPointF(loc_left, loc_top), QRectF(corner.m_trimH, sourceTopF, nudgedCornerSizeX, nudgedCornerSizeY));  // top-left
-        FRAMENT(1, QPointF(loc_x75, loc_top), QRectF(pixmap_x75, sourceTopF, nudgedCornerSizeX, nudgedCornerSizeY));   // top-right
-        FRAMENT(2, QPointF(loc_left, loc_y75), QRectF(corner.m_trimH, pixmap_y75, nudgedCornerSizeX, nudgedCornerSizeY));  // bottom-left
-        FRAMENT(3, QPointF(loc_x75, loc_y75), QRectF(pixmap_x75, pixmap_y75, nudgedCornerSizeX, nudgedCornerSizeY));   // bottom-right
+        FRAGMENT(0, QPointF(loc_left, loc_top), QRectF(corner.m_trimH, sourceTopF, nudgedCornerSizeX, nudgedCornerSizeY));  // top-left
+        FRAGMENT(1, QPointF(loc_x75, loc_top), QRectF(pixmap_x75, sourceTopF, nudgedCornerSizeX, nudgedCornerSizeY));   // top-right
+        FRAGMENT(2, QPointF(loc_left, loc_y75), QRectF(corner.m_trimH, pixmap_y75, nudgedCornerSizeX, nudgedCornerSizeY));  // bottom-left
+        FRAGMENT(3, QPointF(loc_x75, loc_y75), QRectF(pixmap_x75, pixmap_y75, nudgedCornerSizeX, nudgedCornerSizeY));   // bottom-right
 
-        FRAMENT(4, QRectF(loc_x25, loc_top, loc_gx, nudgedCornerSizeY), QRectF(pixmap_x25, sourceTopF, pixmap_gx, nudgedCornerSizeY));  // top
-        FRAMENT(5, QRectF(loc_x25, loc_y75, loc_gx, nudgedCornerSizeY), QRectF(pixmap_x25, pixmap_y75, pixmap_gx, nudgedCornerSizeY));  // bottom
-        FRAMENT(6, QRectF(loc_left, loc_y25, nudgedCornerSizeX, loc_gy), QRectF(corner.m_trimH, pixmap_y25, nudgedCornerSizeX, pixmap_gy)); // left
-        FRAMENT(7, QRectF(loc_x75, loc_y25, nudgedCornerSizeX, loc_gy), QRectF(pixmap_x75, pixmap_y25, nudgedCornerSizeX, pixmap_gy));  // right
+        FRAGMENT(4, QRectF(loc_x25, loc_top, loc_gx, nudgedCornerSizeY), QRectF(pixmap_x25, sourceTopF, pixmap_gx, nudgedCornerSizeY));  // top
+        FRAGMENT(5, QRectF(loc_x25, loc_y75, loc_gx, nudgedCornerSizeY), QRectF(pixmap_x25, pixmap_y75, pixmap_gx, nudgedCornerSizeY));  // bottom
+        FRAGMENT(6, QRectF(loc_left, loc_y25, nudgedCornerSizeX, loc_gy), QRectF(corner.m_trimH, pixmap_y25, nudgedCornerSizeX, pixmap_gy)); // left
+        FRAGMENT(7, QRectF(loc_x75, loc_y25, nudgedCornerSizeX, loc_gy), QRectF(pixmap_x75, pixmap_y25, nudgedCornerSizeX, pixmap_gy));  // right
 
-        FRAMENT(8, QRectF(loc_x25, loc_y25, loc_gx, loc_gy), QRectF(pixmap_x25, pixmap_y25, pixmap_gx, pixmap_gy));       // center
+        FRAGMENT(8, QRectF(loc_x25, loc_y25, loc_gx, loc_gy), QRectF(pixmap_x25, pixmap_y25, pixmap_gx, pixmap_gy));       // center
 
-        FRAMENTS_DRAW(9);
+        FRAGMENTS_DRAW(9);
+        
+        //painter.fillRect(location, QColor(255, 0, 0));
     }
 }
 

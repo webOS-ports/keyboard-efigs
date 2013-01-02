@@ -220,8 +220,13 @@ PhoneKeyboard::PhoneKeyboard(IMEDataInterface * dataInterface) : VirtualKeyboard
     for (int r = 0; r < PhoneKeymap::cKeymapRows; ++r)
         m_keymap.setRowHeight(r, m_white_key.height() / 2);
 
-    m_presetHeight[0] = 377; // portrait
-    m_presetHeight[1] = 260; // landscape
+    //Calculate height relative to the screen size
+    QSize screenSize = m_IMEDataInterface->m_screenSize.get();
+    const int longAxis = qMax(screenSize.width(), screenSize.height());
+    const int shortAxis = qMin(screenSize.width(), screenSize.height());
+    
+    m_presetHeight[0] = longAxis * 0.475; // portrait
+    m_presetHeight[1] = shortAxis * 0.5; // landscape
 
     connect(&m_IMEDataInterface->m_availableSpace, SIGNAL(valueChanged(const QRect &)), SLOT(availableSpaceChanged(const QRect &)));
     connect(&m_IMEDataInterface->m_visible, SIGNAL(valueChanged(const bool &)), SLOT(visibleChanged(const bool &)));

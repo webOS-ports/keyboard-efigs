@@ -41,7 +41,7 @@ QPixmap &IMEPixmap::pixmap()
             m_pixmap.load(m_name);
         } else {
             IMEDataInterface *iface = getIMEDataInterface();
-
+            
             if (iface) {
                 QString filename = iface->getLunaSystemSetting("SystemResourcesPath").toString();
 
@@ -56,6 +56,7 @@ QPixmap &IMEPixmap::pixmap()
                 }
 
                 m_pixmap.load(filename);
+        	m_pixmap = m_pixmap.scaledToHeight(m_pixmap.height() * iface->m_pixmapScale.get(), Qt::SmoothTransformation);
             }
         }
     }

@@ -238,6 +238,14 @@ private:
     QRect m_extendedKeysFrame; // frame of the currently displayed extended keys, if any. Undefined value when m_extendedKeys is NULL.
     int m_extendedKeysPointer; // where the extended keys popup pointer to the key should be (X coordinate)
     UKey m_extendedKeyShown;
+    
+    int m_PopupFontSize;
+    int m_PopupLeftSide;
+    int m_PopupRightSide;
+    int m_PopupSide;
+    int m_PopupPointerStart;
+    int m_PopupPointerWidth;
+    int m_PopupTopToKey;
 
     ShortcutsHandler m_shortcutsHandler;
 

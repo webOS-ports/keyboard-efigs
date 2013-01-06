@@ -227,7 +227,7 @@ PhoneKeyboard::PhoneKeyboard(IMEDataInterface * dataInterface) : VirtualKeyboard
     const int shortAxis = qMin(screenSize.width(), screenSize.height());
     
     m_presetHeight[0] = longAxis * 0.375; // portrait
-    m_presetHeight[1] = shortAxis * 0.3; // landscape
+    m_presetHeight[1] = shortAxis * 0.422; // landscape
     
     m_9tileCorner = NineTileCorner(22 * dataInterface->m_layoutScale.get(), 22 * dataInterface->m_layoutScale.get());
     
